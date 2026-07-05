@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -8,5 +8,832 @@
 <body>
     <div id="app">Loading...</div>
     <script src="client.js"></script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Voice Tombola</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            color: #fff;
+            text-align: center;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            padding: 10px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .active-screen {
+            display: flex !important;
+        }
+
+        .btn-main {
+            width: 80%;
+            max-width: 300px;
+            padding: 15px;
+            margin: 10px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: white;
+        }
+        .btn-caller { background: #d32f2f; }
+        .btn-player { background: #1976d2; }
+        .btn-secondary { background: #444; font-size: 0.9rem; padding: 10px; }
+        .btn-stop { background: #ff1744 !important; font-weight: bold; color: white; border: none; border-radius: 5px; cursor: pointer; padding: 4px 10px; font-size: 0.8rem; }
+
+        .app-header {
+            background: linear-gradient(135deg, #4a76a8, #2a5298);
+            padding: 5px;
+            width: 100%;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .number-display {
+            background: #fff;
+            color: #000;
+            border-radius: 10px;
+            padding: 5px 10px;
+            margin: 5px 0;
+            width: 95%;
+            max-width: 500px;
+            border: 3px solid #4a76a8;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 100px;
+        }
+        #numero { font-size: 2.8rem; font-weight: 900; color: #d32f2f; line-height: 1; flex-shrink: 0; }
+        #smorfia-img { width: 120px; height: 120px; object-fit: contain; margin: 0 10px; border-radius: 10px; display: none; box-shadow: 0 4px 8px rgba(0,0,0,0.5); background: #f0f0f0; padding: 5px; }
+        #frase-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 10px; overflow: hidden; min-height: 120px; }
+        #frase { font-size: 1.0rem; font-weight: bold; color: #1976d2; text-transform: uppercase; line-height: 1.2; overflow: visible; text-align: center; }
+
+        /* Overlay per figurina grande (Player) */
+        #large-smorfia-overlay {
+            display: none;
+            position: fixed;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 250px; height: 300px;
+            background: rgba(255,255,255,0.95);
+            border: 5px solid #1976d2;
+            border-radius: 20px;
+            z-index: 11000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        #large-smorfia-img { width: 200px; height: 200px; object-fit: contain; }
+        #large-smorfia-num { font-size: 3rem; font-weight: 900; color: #d32f2f; }
+
+        .tabellone-container {
+            flex-grow: 1;
+            width: 100%;
+            overflow: hidden;
+            padding: 0 5px;
+            display: flex;
+            flex-direction: column;
+        }
+        .tab {
+            width: 100%;
+            height: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            background: #111;
+            border: 1px solid #333;
+        }
+        .tab td {
+            border: 1px solid #333;
+            padding: 0;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .tab td:nth-child(5) { border-right: 3px solid #fff; }
+        .tab tr:nth-child(3) td, .tab tr:nth-child(6) td { border-bottom: 3px solid #fff; }
+
+        .estratto { background: #2e7d32 !important; color: #fff; }
+        .ultimo { background: #fbc02d !important; color: #000 !important; animation: blink 1s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .toolbar {
+            background: #eee;
+            width: 100%;
+            padding: 5px;
+            border-top-left-radius: 15px;
+            border-top-right-radius: 15px;
+            color: #000;
+        }
+        .toolbar-row {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-bottom: 2px;
+            gap: 5px;
+        }
+        .btn-game {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 5px;
+            background: #4a76a8;
+            color: #fff;
+            font-weight: bold;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        .btn-lang.active { background: #2e7d32 !important; }
+
+        #player-view { display: none; width: 100%; height: 100%; flex-direction: column; }
+        .player-header { display: flex; justify-content: space-between; align-items: center; padding: 2px 5px; background: #333; border-radius: 5px; margin-bottom: 2px; }
+        .player-header h4 { margin: 0; font-size: 0.8rem; color: #ffc107; text-transform: uppercase; }
+        
+        #cartelle-container {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            gap: 1px;
+            padding: 2px;
+            overflow: hidden;
+        }
+        .player-card { display: flex; background: #222; border: 1px solid #444; width: 100%; height: 16%; align-items: stretch; margin-bottom: 1px; }
+        .card-side-num { width: 22px; background: #ffc107; color: #000; font-weight: 900; font-size: 0.6rem; display: flex; align-items: center; justify-content: center; writing-mode: vertical-lr; transform: rotate(180deg); }
+        .card-grid { flex: 1; display: grid; grid-template-columns: repeat(9, 1fr); }
+        .cell { background: #000; border: 0.5px solid #222; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: #fff; }
+        .cell.marked { background: #ffc107 !important; color: #000 !important; font-weight: bold; border-radius: 1px; }
+
+        .logo { width: 300px; height: auto; margin-bottom: 20px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+
+        #chosen-cards-display {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0;
+            justify-content: center;
+            max-height: 80px;
+            overflow-y: auto;
+        }
+        .card-token {
+            background: #1976d2;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+        }
+        .card-token span { cursor: pointer; color: #ff5252; font-weight: 900; }
+
+        .wallet-info {
+            background: #2e7d32;
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 10px 0;
+            display: inline-block;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .user-id-badge {
+            font-size: 0.65rem;
+            color: #ffc107;
+            display: block;
+            margin-top: 2px;
+            text-transform: uppercase;
+        }
+        .btn-buy { background: #ffc107; color: #000; border: none; padding: 5px 12px; border-radius: 15px; font-weight: bold; margin-left: 10px; cursor: pointer; }
+
+        #license-blocker {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            color: #fff;
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- OVERLAY LICENZA -->
+    <div id="license-blocker">
+        <h1 style="color: #d32f2f;">ACCESS DENIED</h1>
+        <p id="license-msg">Your license has expired or is not authorized.<br>Please contact the administrator for renewal.</p>
+        <div id="activation-area" style="margin-top: 20px;">
+            <input type="text" id="lic-key-input" placeholder="Enter License Key" style="padding: 10px; width: 250px; border-radius: 5px; border: none;">
+            <br><br>
+            <button class="btn-main" onclick="applyLicense()">ACTIVATE</button>
+        </div>
+    </div>
+
+    <!-- OVERLAY FIGURINA GRANDE -->
+    <div id="large-smorfia-overlay">
+        <div id="large-smorfia-num">0</div>
+        <img id="large-smorfia-img" src="" alt="Icon">
+    </div>
+
+    <!-- 1. START SCREEN -->
+    <div id="screen-start" class="screen active-screen" style="justify-content: center;">
+        <img src="tombola_splash.png" class="logo" alt="Logo">
+        <h1 style="font-size: 1.8rem; margin-bottom: 25px; text-shadow: 2px 2px #d32f2f;">GLOBAL TOMBOLA</h1>
+
+        <div style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 15px;">
+            <div onclick="showLogin('caller')" style="width: 80%; background: #d32f2f; padding: 20px; border-radius: 15px; cursor: pointer; border: 2px solid #fff;">
+                <div style="font-size: 1.4rem; font-weight: 900;">ADMIN / CALLER</div>
+                <div style="font-size: 0.7rem; opacity: 0.8;">Manage games and prizes</div>
+            </div>
+
+            <div onclick="showRoomSelection()" style="width: 80%; background: #1976d2; padding: 20px; border-radius: 15px; cursor: pointer; border: 2px solid #fff;">
+                <div style="font-size: 1.4rem; font-weight: 900;">PLAYER / GAMER</div>
+                <div style="font-size: 0.7rem; opacity: 0.8;">Buy cards and play</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN SCREEN -->
+    <div id="screen-login" class="screen">
+        <h2>MANAGER LOGIN</h2>
+        <div class="setup-input-group">
+            <input type="text" id="manager-id" placeholder="Manager ID" style="padding:10px; margin-bottom:10px; width:80%;">
+            <input type="password" id="manager-pass" placeholder="Password" style="padding:10px; margin-bottom:10px; width:80%;">
+        </div>
+        <button class="btn-main btn-caller" onclick="attemptLogin()">LOGIN</button>
+        <button class="btn-main btn-secondary" onclick="showScreen('screen-start')">BACK</button>
+    </div>
+
+    <!-- ROOM SELECTION SCREEN -->
+    <div id="screen-rooms" class="screen">
+        <h2>SELECT GAME ROOM</h2>
+        <div class="wallet-info" style="margin-bottom: 20px;">
+            Balance: <span id="balance-rooms">0</span> 💰
+        </div>
+        <div id="rooms-list" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            <button class="btn-main" style="background:#4a76a8;" onclick="selectRoom('MALTA')">🇲🇹 MALTA OFFICIAL</button>
+            <button class="btn-main" style="background:#2e7d32;" onclick="selectRoom('OTHERS')">🌍 OTHERS</button>
+            <button class="btn-main" style="background:#ff9800;" onclick="selectRoom('PRIVATE')">🏠 PRIVATE TABLE</button>
+        </div>
+        <button class="btn-main btn-secondary" style="margin-top:20px;" onclick="showScreen('screen-start')">BACK</button>
+    </div>
+
+    <!-- 2. CALLER MENU -->
+    <div id="screen-caller-menu" class="screen">
+        <h2>CALLER MENU</h2>
+        <button class="btn-main btn-caller" onclick="startGame('caller')">PLAY GAME</button>
+        <button class="btn-main" style="background-color: #9c27b0; color: white;" onclick="showScreen('screen-prize-settings')">SET PRIZES (%)</button>
+        <button class="btn-main" style="background-color: #4CAF50;" onclick="getAndroidInterface()?.openModSmorfia()">EDIT SMORFIA</button>
+        <button class="btn-main" style="background-color: #FFEB3B; color: black;" onclick="restoreSmorfia()">RESTORE SMORFIA</button>
+        <button class="btn-main btn-secondary" onclick="triggerExit()">BACK</button>
+    </div>
+
+    <!-- 3. PRIZE SETTINGS SCREEN -->
+    <div id="screen-prize-settings" class="screen">
+        <h2>GAME SETTINGS</h2>
+        <div style="background: #222; padding: 15px; border-radius: 10px; width: 90%; max-width: 400px; margin-bottom: 10px;">
+            <h4 style="color:#ffc107; margin:0 0 10px 0;">PRIZE DISTRIBUTION (%)</h4>
+            <div class="setup-input-group"> Ambo: <input type="number" id="p-ambo" value="5" style="width:60px;" oninput="updatePrizeTotal()"> % </div>
+            <div class="setup-input-group"> Terno: <input type="number" id="p-terno" value="10" style="width:60px;" oninput="updatePrizeTotal()"> % </div>
+            <div class="setup-input-group"> Quaterna: <input type="number" id="p-quaterna" value="15" style="width:60px;" oninput="updatePrizeTotal()"> % </div>
+            <div class="setup-input-group"> Cinquina: <input type="number" id="p-cinquina" value="20" style="width:60px;" oninput="updatePrizeTotal()"> % </div>
+            <div class="setup-input-group"> Tombola: <input type="number" id="p-tombola" value="30" style="width:60px;" oninput="updatePrizeTotal()"> % </div>
+            <hr>
+            <div id="p-total-info" style="font-weight: bold; color: #4CAF50;">Prizes Total: 80%</div>
+            <div id="p-house-info" style="font-weight: bold; color: #ffc107;">House Profit: 20%</div>
+        </div>
+
+        <div style="background: #222; padding: 15px; border-radius: 10px; width: 90%; max-width: 400px;">
+            <h4 style="color:#ffc107; margin:0 0 10px 0;">START CONDITIONS</h4>
+            <div class="setup-input-group">
+                Min. Cards: <input type="number" id="min-cards-input" value="10" style="width:60px;">
+                <p style="font-size: 0.7rem; color: #aaa;">Game will wait for this number of sales.</p>
+            </div>
+        </div>
+
+        <button class="btn-main" style="background:#2e7d32; margin-top: 15px;" onclick="saveGameConfig()">SAVE & BACK</button>
+        <button class="btn-main btn-secondary" onclick="showScreen('screen-caller-menu')">CANCEL</button>
+    </div>
+
+    <!-- 3. PLAYER SETUP -->
+    <div id="screen-player-setup" class="screen">
+        <h2>CHOOSE CARDS</h2>
+        <div class="wallet-info">
+            Balance: <span id="balance-setup">0</span> 💰
+            <button class="btn-buy" onclick="buyCredit()">RECHARGE</button>
+            <div class="user-id-badge">USER ID: <span id="user-id-setup">---</span></div>
+        </div>
+
+        <div style="background: #222; padding: 10px; border-radius: 10px; width: 95%; margin: 5px 0;">
+            <div style="font-size: 0.8rem; color: #ffc107; margin-bottom: 5px; font-weight: bold;">BULK PURCHASE (Max 12)</div>
+            <div style="display: flex; justify-content: center; align-items: center; gap: 5px;">
+                F: <input type="number" id="card-from" min="1" max="72" style="width: 45px;">
+                T: <input type="number" id="card-to" min="1" max="72" style="width: 45px;">
+                <button class="btn-game" onclick="addBulkCards()">ADD</button>
+            </div>
+        </div>
+
+        <div id="chosen-cards-display"></div>
+        <p id="cards-count-info" style="font-size: 0.8rem;">Selected: 0/12</p>
+        <button class="btn-main btn-player" onclick="startGame('player')">START (PAY)</button>
+        <button class="btn-main btn-secondary" onclick="triggerExit()">BACK</button>
+    </div>
+
+    <!-- 4. GAME SCREEN -->
+    <div id="screen-game" class="screen" style="padding: 0; justify-content: flex-start;">
+        <div class="app-header" id="header-title">VOICE TOMBOLA</div>
+
+        <div class="number-display">
+            <div id="numero">0</div>
+            <img id="smorfia-img" src="" alt="Smorfia">
+            <div id="frase-area">
+                <div id="frase">READY?</div>
+            </div>
+            <button id="btn-force-start" class="btn-game" style="display:none; background:#ff9800; margin-right:5px;" onclick="forceStart()">FORCE START</button>
+        </div>
+
+        <div class="tabellone-container">
+            <div id="live-controls" style="padding: 10px; width: 100%; display: none;">
+                <button class="btn-game" style="background:#d32f2f; width:45%;" onclick="getAndroidInterface()?.checkAndStartListening()">🎤 LISTEN NOW</button>
+                <button class="btn-game" style="background:#1976d2; width:45%;" onclick="getAndroidInterface()?.startLiveAutomatica()">🔊 LIVE AUTO</button>
+            </div>
+            
+            <table class="tab" id="tabellone"></table>
+            
+            <div id="player-view" style="display:none; flex-direction:column; width:100%; height:100%;">
+                <div class="player-header">
+                    <h4 id="card-page-title">PAGE 1/2</h4>
+                    <div style="display:flex; gap:10px;">
+                         <button class="btn-game" onclick="changeCardPage(-1)">PREV</button>
+                         <button class="btn-game" onclick="changeCardPage(1)">NEXT</button>
+                    </div>
+                    <button class="btn-game" style="background:#2e7d32; font-size: 0.7rem;" onclick="simulateMalta()">TEST</button>
+                    <button class="btn-stop" style="font-size: 0.7rem;" onclick="triggerExit()">STOP</button>
+                </div>
+                <div id="cartelle-container"></div>
+            </div>
+        </div>
+
+        <div class="toolbar" id="game-toolbar">
+            <div class="toolbar-row" id="row-extraction">
+                <button class="btn-game" id="btn-estrai" onclick="estrai()">🎤 VOICE</button>
+                <select id="select-interval" style="padding: 3px; border-radius: 5px; font-size: 0.8rem;">
+                    <option value="5000">5s</option>
+                    <option value="7000" selected>7s</option>
+                    <option value="10000">10s</option>
+                </select>
+                <button class="btn-game" id="btn-auto" style="background:#fbc02d; color:#000;" onclick="toggleAuto()">AUTO: OFF</button>
+            </div>
+            <div class="toolbar-row" id="row-languages">
+                <button id="lang-it" class="btn-game btn-lang" onclick="setLanguage('it')">ITA</button>
+                <button id="lang-en" class="btn-game btn-lang" onclick="setLanguage('en')">ENG</button>
+                <button id="lang-nap" class="btn-game btn-lang" onclick="setLanguage('nap')">NAP</button>
+                <button class="btn-stop" style="background:#ff1744; padding: 6px 12px;" onclick="triggerExit()">STOP</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. EDIT SCREEN -->
+    <div id="screen-edit" class="screen">
+        <h2>EDIT SMORFIA</h2>
+        <p>In fase di sviluppo...</p>
+        <button class="btn-main btn-secondary" onclick="showScreen('screen-caller-menu')">BACK</button>
+    </div>
+
+    <script src="cartelle.js"></script>
+    <script src="smorfia_it.js"></script>
+    <script src="smorfia_en.js"></script>
+
+    <script>
+        let estrazione = [];
+        let lingua = 'it';
+        let timerAuto = null;
+        let userRole = 'caller';
+        let chosenCardIds = [];
+        let markedNumbers = {};
+        let currentPageIndex = 0; // 0 = cards 1-6, 1 = cards 7-12
+        let currentWinLevel = 2;
+        const winNames = { 2: "AMBO", 3: "TERNO", 4: "QUATERNA", 5: "CINQUINA", 6: "TOMBOLA" };
+        let prizePercentages = { 2: 5, 3: 10, 4: 15, 5: 20, 6: 30 };
+        let totalIncome = 0;
+        let minCardsToStart = 10;
+        let currentSoldCards = 0;
+        let selectedRoom = null;
+        let activeManagerLimit = 0;
+
+        function showLogin() { showScreen('screen-login'); }
+
+        function attemptLogin() {
+            const id = document.getElementById('manager-id').value;
+            const pass = document.getElementById('manager-pass').value;
+            if (id === "01" && pass === "01") {
+                selectedRoom = "ADMIN_ROOM";
+                showScreen('screen-caller-menu');
+            } else {
+                alert("Invalid Credentials!");
+            }
+        }
+
+        function showRoomSelection() {
+            const list = document.getElementById('rooms-list');
+            const rooms = [
+                { id: 'MALTA', name: '🇲🇹 MALTA OFFICIAL', color: '#4a76a8' },
+                { id: 'OTHERS', name: '🌍 OTHERS', color: '#2e7d32' },
+                { id: 'PRIVATE', name: '🏠 PRIVATE TABLE', color: '#ff9800' }
+            ];
+            let html = "";
+            let limit = activeManagerLimit || rooms.length;
+            for (let i = 0; i < limit; i++) {
+                const r = rooms[i];
+                html += `<button class="btn-main" style="background:${r.color};" onclick="selectRoom('${r.id}')">${r.name}</button>`;
+            }
+            list.innerHTML = html;
+            showScreen('screen-rooms');
+        }
+
+        function selectRoom(room) {
+            selectedRoom = room;
+            getAndroidInterface()?.startOnlineSync(room);
+            showScreen('screen-player-setup');
+        }
+
+        function loadPrizeConfig() {
+            const android = getAndroidInterface();
+            if (android && typeof android.getPrizeConfig === 'function') {
+                try {
+                    const data = JSON.parse(android.getPrizeConfig());
+                    if (data.prizes) {
+                        prizePercentages = data.prizes;
+                        minCardsToStart = data.minCards || 10;
+                    } else {
+                        prizePercentages = data;
+                    }
+                    if (document.getElementById('p-ambo')) {
+                        document.getElementById('p-ambo').value = prizePercentages[2];
+                        document.getElementById('p-terno').value = prizePercentages[3];
+                        document.getElementById('p-quaterna').value = prizePercentages[4];
+                        document.getElementById('p-cinquina').value = prizePercentages[5];
+                        document.getElementById('p-tombola').value = prizePercentages[6];
+                        document.getElementById('min-cards-input').value = minCardsToStart;
+                        updatePrizeTotal();
+                    }
+                } catch (e) { console.error(e); }
+            }
+        }
+
+        function updatePrizeTotal() {
+            const a = parseInt(document.getElementById('p-ambo').value) || 0;
+            const t = parseInt(document.getElementById('p-terno').value) || 0;
+            const q = parseInt(document.getElementById('p-quaterna').value) || 0;
+            const c = parseInt(document.getElementById('p-cinquina').value) || 0;
+            const tom = parseInt(document.getElementById('p-tombola').value) || 0;
+            const total = a + t + q + c + tom;
+            document.getElementById('p-total-info').innerText = "Prizes Total: " + total + "%";
+            document.getElementById('p-house-info').innerText = "House Profit: " + (100 - total) + "%";
+            document.getElementById('p-total-info').style.color = total > 100 ? "#d32f2f" : "#4CAF50";
+        }
+
+        function saveGameConfig() {
+            const a = parseInt(document.getElementById('p-ambo').value) || 0;
+            const t = parseInt(document.getElementById('p-terno').value) || 0;
+            const q = parseInt(document.getElementById('p-quaterna').value) || 0;
+            const c = parseInt(document.getElementById('p-cinquina').value) || 0;
+            const tom = parseInt(document.getElementById('p-tombola').value) || 0;
+            const min = parseInt(document.getElementById('min-cards-input').value) || 1;
+            if ((a + t + q + c + tom) > 100) { alert("Max 100%"); return; }
+            prizePercentages = { 2: a, 3: t, 4: q, 5: c, 6: tom };
+            minCardsToStart = min;
+            getAndroidInterface()?.savePrizeConfig(JSON.stringify({ prizes: prizePercentages, minCards: minCardsToStart }));
+            alert("Saved!");
+            showScreen('screen-caller-menu');
+        }
+
+        function getAndroidInterface() { return window.Android || window.android || null; }
+        function checkLicence() { getAndroidInterface()?.checkLicense('onLicenseResult'); }
+        window.onLicenseResult = function(isAuthorized) {
+            if (!isAuthorized) {
+                document.getElementById('license-blocker').style.display = 'flex';
+                document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+            } else {
+                document.getElementById('license-blocker').style.display = 'none';
+            }
+        };
+        function applyLicense() {
+            const key = document.getElementById('lic-key-input').value;
+            if (key.length > 3) getAndroidInterface()?.saveLicenseKey(key);
+        }
+
+        function updateBalances() {
+            const android = getAndroidInterface();
+            if (android && typeof android.getTombolini === 'function') {
+                const b = android.getTombolini();
+                document.getElementById('balance-rooms').innerText = b;
+                document.getElementById('balance-setup').innerText = b;
+                const uid = android.getUserId();
+                document.getElementById('user-id-setup').innerText = uid;
+            }
+        }
+
+        function buyCredit() { getAndroidInterface()?.addTombolini(10); }
+        function triggerExit() {
+            if (getAndroidInterface()?.showAdAndReload) getAndroidInterface().showAdAndReload();
+            else location.reload();
+        }
+
+        function showScreen(screenId) {
+            if (screenId === 'screen-game') updateNapButtonLabel();
+            if (['screen-player-setup', 'screen-rooms'].includes(screenId)) updateBalances();
+            if (screenId === 'screen-prize-settings') loadPrizeConfig();
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+            document.getElementById(screenId).classList.add('active-screen');
+        }
+
+        function restoreSmorfia() {
+            if (confirm("Restore?")) { getAndroidInterface()?.restoreSmorfiaFromBackup(); setTimeout(updateNapButtonLabel, 500); }
+        }
+
+        function updateNapButtonLabel() {
+            const isCustom = getAndroidInterface()?.isSmorfiaCustomized?.() || false;
+            document.getElementById('lang-nap').innerText = isCustom ? 'OWN' : 'NAP';
+        }
+
+        function addCard() {
+            const val = parseInt(document.getElementById('card-number-input').value);
+            if (val >= 1 && val <= 72 && chosenCardIds.length < 12 && !chosenCardIds.includes(val)) {
+                chosenCardIds.push(val); renderSetupCards();
+            }
+            document.getElementById('card-number-input').value = "";
+        }
+
+        function addBulkCards() {
+            const from = parseInt(document.getElementById('card-from').value);
+            const to = parseInt(document.getElementById('card-to').value);
+            if (isNaN(from) || isNaN(to) || from < 1 || to > 72 || from > to) { alert("1-72 range"); return; }
+            for (let i = from; i <= to; i++) {
+                if (chosenCardIds.length < 12 && !chosenCardIds.includes(i)) chosenCardIds.push(i);
+            }
+            renderSetupCards();
+        }
+
+        function renderSetupCards() {
+            document.getElementById('chosen-cards-display').innerHTML = chosenCardIds.map(id => `<div class="card-token">${id} <span onclick="removeCard(${id})">X</span></div>`).join('');
+            document.getElementById('cards-count-info').innerText = `Selected: ${chosenCardIds.length}/12`;
+        }
+        function removeCard(id) { chosenCardIds = chosenCardIds.filter(c => c !== id); renderSetupCards(); }
+
+        function startGame(role) {
+            if (role === 'player') {
+                if (chosenCardIds.length === 0) { alert("Pick cards!"); return; }
+                if (!getAndroidInterface()?.payWithTombolini(chosenCardIds.length)) { alert("No credit!"); return; }
+            }
+            userRole = role;
+            showScreen('screen-game');
+            initGame();
+        }
+
+        function initGame() {
+            estrazione = [];
+            currentWinLevel = 2;
+            currentPageIndex = 0;
+            markedNumbers = {};
+            chosenCardIds.forEach(id => markedNumbers[id] = {});
+            document.getElementById('numero').innerText = "0";
+            buildTabellone();
+
+            const toolbar = document.getElementById('game-toolbar');
+            if (userRole === 'caller') {
+                setLanguage('nap');
+                document.getElementById('player-view').style.display = 'none';
+                document.getElementById('tabellone').style.display = 'table';
+                toolbar.style.display = 'block';
+                checkStartQuota();
+            } else {
+                setLanguage('en');
+                document.getElementById('player-view').style.display = 'flex';
+                document.getElementById('tabellone').style.display = 'none';
+                toolbar.style.display = 'none';
+                createPlayerCards();
+            }
+        }
+
+        function checkStartQuota() {
+            const phrase = document.getElementById('frase');
+            const rowEx = document.getElementById('row-extraction');
+            const fBtn = document.getElementById('btn-force-start');
+            if (currentSoldCards < minCardsToStart) {
+                phrase.innerText = `WAIT: ${currentSoldCards}/${minCardsToStart}`;
+                rowEx.style.opacity = "0.4"; rowEx.style.pointerEvents = "none";
+                fBtn.style.display = "block";
+            } else {
+                phrase.innerText = "READY!";
+                rowEx.style.opacity = "1"; rowEx.style.pointerEvents = "auto";
+                fBtn.style.display = "none";
+            }
+        }
+
+        function forceStart() { currentSoldCards = minCardsToStart; checkStartQuota(); }
+
+        function buildTabellone() {
+            let html = "";
+            for (let r = 0; r < 9; r++) {
+                html += "<tr>";
+                for (let c = 1; c <= 10; c++) { html += `<td id="cell-${(r*10)+c}">${(r*10)+c}</td>`; }
+                html += "</tr>";
+            }
+            document.getElementById('tabellone').innerHTML = html;
+        }
+
+        function createPlayerCards() {
+            const container = document.getElementById('cartelle-container');
+            const start = currentPageIndex * 6;
+            const end = Math.min(start + 6, chosenCardIds.length);
+            const totalPages = Math.ceil(chosenCardIds.length / 6) || 1;
+
+            document.getElementById('card-page-title').innerText = `PAGE ${currentPageIndex + 1}/${totalPages}`;
+
+            let html = "";
+            for (let i = start; i < end; i++) {
+                const id = chosenCardIds[i];
+                const data = CARTELLE[id];
+                let grid = "";
+                for (let r = 0; r < 3; r++) {
+                    for (let c = 0; c < 9; c++) {
+                        const val = data[r][c];
+                        const isMarked = markedNumbers[id][`${r}-${c}`] ? "marked" : "";
+                        grid += `<div class="cell ${isMarked}">${val || ""}</div>`;
+                    }
+                }
+                html += `<div class="player-card"><div class="card-side-num">${id}</div><div class="card-grid">${grid}</div></div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function changeCardPage(dir) {
+            const totalPages = Math.ceil(chosenCardIds.length / 6) || 1;
+            currentPageIndex += dir;
+            if (currentPageIndex < 0) currentPageIndex = totalPages - 1;
+            if (currentPageIndex >= totalPages) currentPageIndex = 0;
+            createPlayerCards();
+        }
+
+        window.onExternalNumber = function(n) {
+            if (userRole !== 'player' || estrazione.includes(n)) return;
+            estrazione.push(n);
+            chosenCardIds.forEach(id => {
+                const data = CARTELLE[id];
+                for (let r = 0; r < 3; r++) {
+                    for (let c = 0; c < 9; c++) {
+                        if (data[r][c] === n) markedNumbers[id][`${r}-${c}`] = true;
+                    }
+                }
+            });
+            createPlayerCards();
+            aggiornaUI(n);
+            checkWins();
+        };
+
+        function checkWins() {
+            if (currentWinLevel > 6) return;
+            let winners = [];
+            chosenCardIds.forEach(id => {
+                const data = CARTELLE[id];
+                let cardMarked = 0;
+                for (let r = 0; r < 3; r++) {
+                    let rowCount = 0;
+                    for (let c = 0; c < 9; c++) {
+                        if (data[r][c] && markedNumbers[id][`${r}-${c}`]) { rowCount++; cardMarked++; }
+                    }
+                    if (currentWinLevel <= 5 && rowCount >= currentWinLevel) { winners.push(id); break; }
+                }
+                if (currentWinLevel === 6 && cardMarked === 15) winners.push(id);
+            });
+            if (winners.length > 0) {
+                showWinOverlay(winNames[currentWinLevel], [...new Set(winners)]);
+                currentWinLevel++;
+            }
+        }
+
+        function showWinOverlay(title, winnersList) {
+            const overlay = document.createElement('div');
+            overlay.style = "position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(255,193,7,0.95); color:#000; padding:20px; border-radius:20px; z-index:10000; text-align:center; border:5px solid #fff;";
+            const val = ((chosenCardIds.length * prizePercentages[currentWinLevel]) / (100 * winnersList.length)).toFixed(2);
+            overlay.innerHTML = `<h2>🎊 ${title}! 🎊</h2><p>Win: 💰 ${val} T.</p><small>Cards: ${winnersList.join(', ')}</small>`;
+            document.body.appendChild(overlay);
+            setTimeout(() => { overlay.remove(); if (title === "TOMBOLA") triggerExit(); }, 4000);
+        }
+
+        function simulateMalta() { let n; do { n = Math.floor(Math.random() * 90) + 1; } while (estrazione.includes(n)); window.onExternalNumber(n); }
+        function setLanguage(l) { lingua = l; document.querySelectorAll('.btn-lang').forEach(b => b.classList.remove('active')); document.getElementById('lang-'+l)?.classList.add('active'); }
+        function parla(f, n) {
+            const android = getAndroidInterface();
+            if (android) {
+                android.stopAudio();
+                if (lingua === 'nap') android.playAudio(`audio/${String(n).padStart(2,'0')}.mp3`);
+                else android.speak(n + ". " + f, lingua === 'en' ? 'en-US' : 'it-IT');
+            }
+        }
+        function estrai() {
+            const android = getAndroidInterface();
+            if (userRole === 'caller' && !timerAuto) {
+                if (android && typeof android.checkAndStartListening === 'function') {
+                    android.checkAndStartListening();
+                } else {
+                    estraiRandom();
+                }
+            } else {
+                estraiRandom();
+            }
+        }
+        function estraiRandom() { if (estrazione.length >= 90) return; let n; do { n = Math.floor(Math.random() * 90) + 1; } while (estrazione.includes(n)); estrazione.push(n); aggiornaUI(n); }
+        function aggiornaUI(n) {
+            const numStr = String(n).padStart(2, '0');
+            const nm = (lingua === 'en' ? SMORFIA_EN : SMORFIA_IT)[numStr];
+            document.getElementById('numero').innerText = n;
+            document.getElementById('frase').innerText = nm || "";
+
+            // Gestione Immagine Figurina Smorfia
+            const imgPath = `smorfia/${numStr}.png`;
+            const imgEl = document.getElementById('smorfia-img');
+            if (imgEl) {
+                imgEl.src = imgPath;
+                imgEl.style.display = 'block';
+                imgEl.onerror = function() { this.style.display = 'none'; };
+            }
+
+            // Se siamo Player, mostriamo l'icona GRANDE al centro per 2 secondi
+            if (userRole === 'player') {
+                const overlay = document.getElementById('large-smorfia-overlay');
+                const largeImg = document.getElementById('large-smorfia-img');
+                const largeNum = document.getElementById('large-smorfia-num');
+                if (overlay && largeImg) {
+                    largeImg.src = imgPath;
+                    largeNum.innerText = n;
+                    overlay.style.display = 'flex';
+                    setTimeout(() => { overlay.style.display = 'none'; }, 2500);
+                }
+            }
+
+            document.querySelectorAll('.tab td').forEach(t => t.classList.remove('ultimo'));
+            document.getElementById('cell-' + n)?.classList.add('estratto', 'ultimo');
+
+            if (userRole === 'caller') {
+                getAndroidInterface()?.sendDrawnNumberToServer(n, selectedRoom || "MALTA");
+            }
+
+            parla(nm, n);
+        }
+
+        function toggleAuto() { if (timerAuto) stopAuto(); else startAuto(); }
+        function startAuto() {
+            estraiRandom();
+            const interval = parseInt(document.getElementById('select-interval').value) || 7000;
+            timerAuto = setInterval(estraiRandom, interval);
+            const btn = document.getElementById('btn-auto');
+            if (btn) {
+                btn.innerText = "AUTO: ON";
+                btn.style.background = "#d32f2f";
+                btn.style.color = "#fff";
+            }
+        }
+        function stopAuto() {
+            if (timerAuto) clearInterval(timerAuto);
+            timerAuto = null;
+            const btn = document.getElementById('btn-auto');
+            if (btn) {
+                btn.innerText = "AUTO: OFF";
+                btn.style.background = "#fbc02d";
+                btn.style.color = "#000";
+            }
+        }
+        window.onload = () => { checkLicence(); updateBalances(); updateNapButtonLabel(); loadPrizeConfig(); };
+    </script>
 </body>
 </html>
