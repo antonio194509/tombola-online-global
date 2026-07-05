@@ -10,6 +10,10 @@ A professional multiplayer tombola platform designed for B2B usage.
 - Modular server architecture
 
 ## Installation
+npm install
 
-## Admin Login
-Default password: `admin123`
+## Start server
+npm start
+
+## Admin login
+Password: admin123
